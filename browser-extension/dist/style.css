@@ -1,0 +1,140 @@
+/* 1. PDF의 Reset CSS */
+body, div, dl, dt, dd, ul,ol,li,h1,h2,h3,h4,h5, h6,pre, code, form, fieldset, legend, textarea, p,blockquote, th, td, input, select, button{margin:0;padding:0}
+fieldset, img{border:0 none}
+dl,ul,ol, menu, li{list-style:none}
+blockquote, q{quotes:none}
+blockquote:before, blockquote:after,q:before, q:after{content:''; content:none}
+input, select, textarea, button{vertical-align:middle;font-size:100%}
+button{border:0 none; background-color: transparent;cursor:pointer}
+table {border-collapse:collapse;border-spacing:0}
+body{-webkit-text-size-adjust:none}
+input[type='text'], input[type='password'], input[type='submit'], [type='submit'], input[type='search'], input[type='tel'], input[type='email'], html
+input[type='button'], input[type='reset'] {-webkit-appearance: none; border-radius:0}
+input[type='search']::-webkit-search-cancel-button{-webkit-appearance: none}
+body, th, td, input, select, textarea, button {font-size:14px; line-height:1.5;font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;}
+a{text-decoration:none}
+a:active, a:hover{text-decoration:none}
+address, caption,cite,code, dfn,em, var{font-style:normal; font-weight:normal}
+
+/*
+ * 2. 실습: 시안에 맞춘 스타일 (라이트 모드 기본)
+ */
+:root {
+  --background-color: #FFFFFF;
+  --text-color: #222222;
+  --input-bg: #F0F0F0;
+  --button-bg: #007BFF;
+  --button-text: #FFFFFF;
+  --border-color: #DDDDDD;
+}
+
+body {
+  background: var(--background-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  width: 350px; /* 팝업창 크기 고정 */
+  padding: 20px;
+  box-sizing: border-box; /* 패딩이 너비를 초과하지 않도록 */
+  text-align: center;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.2em;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.form-data {
+  display: grid;
+  gap: 15px;
+}
+
+.form-data div {
+  text-align: left;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  box-sizing: border-box; /* 패딩 포함 너비 100% */
+}
+
+button {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 1em;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.result {
+  text-align: left;
+}
+
+.result-container p {
+  font-size: 1.1em;
+  margin-bottom: 10px;
+}
+
+.result-container strong {
+  color: var(--text-color);
+}
+
+.clear-btn {
+  margin-top: 15px;
+}
+
+.loading, .errors {
+  font-size: 1.1em;
+  padding: 20px 0;
+}
+
+.errors {
+  color: red;
+}
+
+/*
+ * 3. 실습: 다크 모드 적용 
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #2D2D2D;
+    --text-color: #EAEAEA;
+    --input-bg: #404040;
+    --button-bg: #0084FF;
+    --border-color: #555555;
+  }
+  
+  body, button {
+     color: var(--text-color);
+  }
+}

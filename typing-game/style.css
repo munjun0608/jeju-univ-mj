@@ -1,0 +1,97 @@
+/* 기본 스타일 */
+body {
+    background-color: #3B3B98; /* 남색 계열 배경 */
+    color: #FFFFFF;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background-color: #4A4A4A; /* 어두운 회색 */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    width: 700px;
+    text-align: center;
+}
+
+h1 {
+    color: #F9D71C; /* 노란색 */
+    margin-bottom: 20px;
+}
+
+p {
+    font-size: 1.1em;
+    line-height: 1.6;
+}
+
+#quote {
+    background-color: #5A5A5A;
+    padding: 20px;
+    border-radius: 5px;
+    font-size: 1.2em;
+    margin: 20px 0;
+    text-align: left;
+}
+
+#message {
+    font-size: 1.2em;
+    color: #2ECC71; /* 성공 메시지 녹색 */
+    font-weight: bold;
+    height: 1.5em; /* 메시지 영역 높이 고정 */
+}
+
+input[type="text"] {
+    width: 70%;
+    padding: 10px;
+    font-size: 1.1em;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    margin-right: 10px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    background-color: #F9D71C; /* 노란색 */
+    color: #333;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #e6c510;
+}
+
+/* 버튼 비활성화 스타일 */
+button:disabled {
+    background-color: #777;
+    cursor: not-allowed;
+}
+
+/* 입력창 비활성화 스타일 */
+input[type="text"]:disabled {
+    background-color: #ddd;
+}
+
+button i {
+    margin-right: 8px; /* 아이콘과 텍스트 간격 */
+}
+
+/* PDF 제공 클래스 */
+.highlight {
+    background-color: yellow;
+    color: #333; /* 하이라이트 시 텍스트가 잘 보이도록 수정 */
+    font-weight: bold;
+}
+
+.error {
+    background-color: lightcoral;
+    border: 2px solid red;
+}
