@@ -14,8 +14,26 @@
         <p id="quote"></p>
         <p id="message"></p>
         <div>
-            <input type="text" aria-label="current word" id="typed-value" />
+            <input type="text" aria-label="current word" id="typed-value" disabled />
             <button type="button" id="start"><i class="fa-solid fa-play"></i> Start</button>
+        </div>
+    </div>
+
+    <div id="modal-overlay"></div>
+    <div id="modal">
+        <div class="modal-header">
+            <h2>🎉 Mission Complete!</h2>
+            <button id="close-button">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Your time:</p>
+            <h3 id="result-time"></h3>
+            <p id="high-score"></p>
+        </div>
+        <div class="modal-footer">
+            <button id="play-again-button">
+                <i class="fa-solid fa-rotate-right"></i> Play Again
+            </button>
         </div>
     </div>
     <script src="script.js"></script>
