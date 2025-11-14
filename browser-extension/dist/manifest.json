@@ -1,15 +1,12 @@
 {
-  "manifest_version": 3,
-  "name": "My Carbon Trigger",
-  "version": "1.0.0",
-  "description": "A browser extension to track carbon usage.",
-  "action": {
-    "default_popup": "index.html",
-    "default_title": "My Carbon Trigger"
-  },
-  "icons": {
-    "16": "images/plants-people.jpg",
-    "48": "images/plants-people.jpg",
-    "128": "images/plants-people.jpg"
-  }
+"manifest_version": 3,
+"name": "My Carbon Trigger",
+"version": "0.1.0",
+"host_permissions": ["<all_urls>"],
+"background": {
+"service_worker": "background.js"
+},
+"action": {
+"default_popup": "index.html"
+}
 }
