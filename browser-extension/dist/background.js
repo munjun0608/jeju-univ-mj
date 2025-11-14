@@ -23,3 +23,4 @@ function drawIcon(color, size) {
 
     return context.getImageData(0, 0, size, size);
 }
+//7,8주차 실습
