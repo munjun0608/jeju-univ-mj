@@ -22,4 +22,4 @@ function drawIcon(color, size) {
     context.fill();
 
     return context.getImageData(0, 0, size, size);
-}
+} 

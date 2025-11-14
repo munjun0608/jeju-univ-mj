@@ -121,4 +121,4 @@ function setUpUser(apiKey, regionName) {
  errors.textContent = '';
  clearBtn.style.display = 'block';
  displayCarbonUsage(apiKey, regionName);
-}
+} 
