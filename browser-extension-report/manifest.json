@@ -1,13 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "랜덤 고양이 상식",
-  "version": "1.0",
-  "description": "클릭할 때마다 새로운 고양이 상식을 보여줍니다.",
+  "name": "랜덤 고양이 상식 갤러리",
+  "version": "2.0",
+  "description": "클릭할 때마다 새로운 고양이 상식과 사진을 보여줍니다.",
   "action": {
     "default_popup": "index.html",
     "default_icon": "icon.png"
   },
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
-    "https://catfact.ninja/"
+    "https://catfact.ninja/",
+    "https://api.thecatapi.com/"
   ]
 }

@@ -2,33 +2,120 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>고양이 상식</title>
+  <title>고양이 상식 갤러리</title>
   <style>
     body {
-      width: 300px;
+      width: 350px;
       font-family: sans-serif;
-      padding: 10px;
+      padding: 15px;
+      background-color: #fcfcfc;
+    }
+    h3 {
+      text-align: center;
+      color: #333;
+      margin-top: 0;
+    }
+    
+    /* 메인 콘텐츠 영역 */
+    #main-content {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #fff;
+    }
+    #catImage {
+      width: 100%;
+      height: 200px;
+      object-fit: cover; /* 이미지가 비율에 맞게 잘리도록 */
+      display: block;
+      background-color: #eee;
     }
     #fact {
       font-size: 14px;
-      min-height: 50px;
-      margin-top: 10px;
-      padding: 10px;
-      background-color: #f0f0f0;
-      border-radius: 5px;
+      min-height: 40px;
+      margin-top: 0;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-top: 1px solid #eee;
+      line-height: 1.5;
     }
+
     button {
       margin-top: 15px;
       cursor: pointer;
       width: 100%;
-      padding: 8px;
+      padding: 10px;
+      font-size: 15px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      background-color: #5b8dee;
+      color: white;
+    }
+    button:hover {
+      background-color: #4a7bdc;
+    }
+
+    /* 히스토리 영역 */
+    #history-section {
+      margin-top: 20px;
+    }
+    #history-section h4 {
+      margin-bottom: 5px;
+      font-size: 12px;
+      color: #666;
+    }
+    #historyList {
+      list-style-type: none;
+      padding-left: 0;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 12px;
+      border: 1px solid #eee;
+      border-radius: 5px;
+    }
+    #historyList li {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis; /* 긴 텍스트는 ...으로 생략 */
+    }
+    #historyList li:last-child {
+      border-bottom: none;
+    }
+    #historyList li:hover {
+      background-color: #f0f5ff;
+    }
+    #clearHistory {
+      width: auto;
+      font-size: 11px;
+      padding: 4px 8px;
+      background-color: #aaa;
+      margin-top: 5px;
+      float: right;
     }
   </style>
 </head>
 <body>
-  <h3>🐱 랜덤 고양이 상식</h3>
-  <div id="fact">로딩 중...</div>
-  <button id="getFact">새로운 상식 가져오기</button>
+  <h3>🐱 랜덤 고양이 상식 갤러리</h3>
+  
+  <div id="main-content">
+    <img id="catImage" src="icon.png" alt="고양이 사진">
+    <div id="fact">로딩 중...</div>
+  </div>
+  
+  <button id="getFact">새로운 상식 + 사진 가져오기</button>
+
+  <div id="history-section">
+    <h4>최근 본 상식
+      <button id="clearHistory" title="히스토리 삭제">전부 삭제</button>
+    </h4>
+    <ul id="historyList">
+      </ul>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
