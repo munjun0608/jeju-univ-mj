@@ -6,9 +6,9 @@ const Messages = {
   KEY_EVENT_RIGHT: "KEY_EVENT_RIGHT",
   KEY_EVENT_SPACE_DOWN: "KEY_EVENT_SPACE_DOWN",
   KEY_EVENT_SPACE_UP: "KEY_EVENT_SPACE_UP",
-  COLLISION_ENEMY_LASER: "COLLISION_ENEMY_LASER", // 영웅 레이저 -> 적 충돌
-  COLLISION_ENEMY_HERO: "COLLISION_ENEMY_HERO",   // 적 본체 -> 영웅 충돌
-  COLLISION_HERO_ENEMY_LASER: "COLLISION_HERO_ENEMY_LASER", // 적 레이저 -> 영웅 충돌 (신규)
+  COLLISION_ENEMY_LASER: "COLLISION_ENEMY_LASER",
+  COLLISION_ENEMY_HERO: "COLLISION_ENEMY_HERO",
+  COLLISION_HERO_ENEMY_LASER: "COLLISION_HERO_ENEMY_LASER",
   GAME_END_LOSS: "GAME_END_LOSS",
   GAME_END_WIN: "GAME_END_WIN",
   KEY_EVENT_ENTER: "KEY_EVENT_ENTER",
@@ -16,46 +16,60 @@ const Messages = {
 
 // 이벤트 처리기
 class EventEmitter {
-  constructor() {
-    this.listeners = {};
-  }
+  constructor() { this.listeners = {}; }
   on(message, listener) {
     if (!this.listeners[message]) this.listeners[message] = [];
     this.listeners[message].push(listener);
   }
   emit(message, payload = null) {
-    if (this.listeners[message]) {
-      this.listeners[message].forEach((l) => l(message, payload));
-    }
+    if (this.listeners[message]) this.listeners[message].forEach((l) => l(message, payload));
   }
-  clear() {
-    this.listeners = {};
-  }
+  clear() { this.listeners = {}; }
 }
 
 // 전역 변수
-let heroImg, enemyImg, laserImg, laserShotImg, lifeImg, ufoImg; // ufoImg 추가
+let heroImg, enemyImg, laserImg, laserShotImg, lifeImg, ufoImg;
 let canvas, ctx;
 let gameObjects = [];
+let stars = [];
 let hero;
 let eventEmitter = new EventEmitter();
 let gameLoopId;
 
-// 스테이지 관리 변수
+// 스테이지 관리
 let currentStage = 1;
-const TOTAL_STAGES = 2; // 총 2단계 (1: 졸개, 2: 보스)
+const TOTAL_STAGES = 2;
+let isStageTransitioning = false;
 
-// 이미지 로드 함수
+// 이미지 로드
 function loadTexture(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => {
-        console.warn(`이미지를 찾을 수 없습니다: ${src}. 기본 이미지를 사용하거나 경로를 확인하세요.`);
-        resolve(img); // 에러가 나도 진행되도록 처리
-    }
+    img.onerror = () => resolve(img);
     img.src = src;
   });
+}
+
+// [배경 별 클래스]
+class Star {
+  constructor() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 2;
+    this.speed = Math.random() * 3 + 1;
+  }
+  update() {
+    this.y += this.speed;
+    if (this.y > canvas.height) {
+      this.y = 0;
+      this.x = Math.random() * canvas.width;
+    }
+  }
+  draw(ctx) {
+    ctx.fillStyle = "white";
+    ctx.fillRect(this.x, this.y, this.size, this.size);
+  }
 }
 
 // GameObject
@@ -68,8 +82,11 @@ class GameObject {
     this.width = 0;
     this.height = 0;
     this.img = undefined;
+    // [수정] 타이머 ID들을 관리하기 위한 속성
+    this.intervalId = null;
+    this.moveInterval = null;
+    this.attackInterval = null;
   }
-
   rectFromGameObject() {
     return {
       top: this.y,
@@ -78,15 +95,18 @@ class GameObject {
       right: this.x + this.width,
     };
   }
-
   draw(ctx) {
-    if (this.img) {
-      ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
-    }
+    if (this.img) ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+  }
+  // [추가] 객체가 삭제될 때 타이머를 정리하는 메서드
+  cleanup() {
+    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.moveInterval) clearInterval(this.moveInterval);
+    if (this.attackInterval) clearInterval(this.attackInterval);
   }
 }
 
-// Hero (차지 기능 포함)
+// Hero
 class Hero extends GameObject {
   constructor(x, y) {
     super(x, y);
@@ -96,18 +116,15 @@ class Hero extends GameObject {
     this.cooldown = 0;
     this.life = 3;
     this.points = 0;
-    
     this.isCharging = false;
     this.chargeStartTime = 0;
   }
-
   startCharge() {
     if (this.canFire() && !this.isCharging) {
       this.isCharging = true;
       this.chargeStartTime = Date.now();
     }
   }
-
   stopChargeAndFire() {
     if (this.isCharging) {
       const chargeDuration = Date.now() - this.chargeStartTime;
@@ -115,60 +132,49 @@ class Hero extends GameObject {
       const isSuper = chargeDuration >= 1000;
       this.fire(isSuper);
     } else if (this.canFire()) {
-        this.fire(false);
+      this.fire(false);
     }
   }
-
   fire(isSuper) {
-    // 마지막 인자 false = 플레이어 레이저
     const laser = new Laser(this.x + 45, this.y - 10, isSuper, false);
-    
-    if (isSuper) {
-        laser.x -= 10;
-    }
-
+    if (isSuper) laser.x -= 10;
     gameObjects.push(laser);
     this.cooldown = 500;
-
     let id = setInterval(() => {
       if (this.cooldown > 0) this.cooldown -= 100;
       else clearInterval(id);
     }, 100);
   }
-
-  canFire() {
-    return this.cooldown === 0;
-  }
-
+  canFire() { return this.cooldown === 0; }
   decrementLife() {
     this.life--;
-    if (this.life <= 0) {
-      this.dead = true;
-    }
+    if (this.life <= 0) this.dead = true;
   }
-
-  incrementPoints(amount = 100) {
-    this.points += amount;
-  }
-
+  incrementPoints(amount) { this.points += amount; }
+  
   draw(ctx) {
     super.draw(ctx);
     if (this.isCharging) {
       const duration = Date.now() - this.chargeStartTime;
       const maxTime = 1000;
       let ratio = Math.min(duration / maxTime, 1);
-      
+      const barX = this.x;
+      const barY = this.y + this.height + 10;
       ctx.fillStyle = "gray";
-      ctx.fillRect(this.x, this.y + this.height + 10, this.width, 10);
-      ctx.fillStyle = ratio === 1 ? "red" : "yellow";
-      ctx.fillRect(this.x, this.y + this.height + 10, this.width * ratio, 10);
+      ctx.fillRect(barX, barY, this.width, 10);
+      if (ratio === 1) {
+          ctx.fillStyle = (Date.now() % 200 < 100) ? "red" : "orange"; 
+      } else {
+          ctx.fillStyle = "yellow";
+      }
+      ctx.fillRect(barX, barY, this.width * ratio, 10);
       ctx.strokeStyle = "white";
-      ctx.strokeRect(this.x, this.y + this.height + 10, this.width, 10);
+      ctx.strokeRect(barX, barY, this.width, 10);
     }
   }
 }
 
-// 일반 적 (Enemy)
+// Enemy (Sine Wave Movement)
 class Enemy extends GameObject {
   constructor(x, y) {
     super(x, y);
@@ -176,101 +182,107 @@ class Enemy extends GameObject {
     this.height = 50;
     this.type = "Enemy";
     this.img = enemyImg;
+    this.startX = x; 
+    this.startTime = Date.now();
 
-    let id = setInterval(() => {
+    this.intervalId = setInterval(() => {
+      // [수정] 죽었으면 타이머 중지
+      if (this.dead) { clearInterval(this.intervalId); return; }
+
+      const time = Date.now() - this.startTime;
+      this.x = this.startX + Math.sin(time / 500) * 50; 
       if (this.y < canvas.height - this.height) {
-        this.y += 5;
+        this.y += 2; 
       } else {
-        clearInterval(id);
+        clearInterval(this.intervalId);
       }
-    }, 300);
+    }, 50);
   }
 }
 
-// [신규] 보스 (Boss)
+// Boss
 class Boss extends GameObject {
   constructor(x, y) {
     super(x, y);
-    this.width = 200;  // 큼직하게
-    this.height = 100; 
+    this.width = 200;
+    this.height = 100;
     this.type = "Boss";
-    this.img = ufoImg; // UFO 이미지
-    this.life = 20;    // 보스 체력
-    this.maxLife = 20;
-    this.direction = 1; // 1: 우측, -1: 좌측
+    this.img = ufoImg;
+    this.life = 30;
+    this.maxLife = 30;
+    this.direction = 1;
 
-    // 보스 이동 로직 (좌우 왕복)
+    // 이동 타이머
     this.moveInterval = setInterval(() => {
-        if (this.x <= 0 || this.x + this.width >= canvas.width) {
-            this.direction *= -1; // 벽에 닿으면 방향 반전
-        }
-        this.x += 10 * this.direction;
-    }, 100);
-
-    // 보스 공격 로직 (주기적으로 레이저 발사)
-    this.attackInterval = setInterval(() => {
-        // 플레이어를 향해 발사 (간단하게 그냥 아래로 발사)
-        const laser = new Laser(this.x + this.width / 2, this.y + this.height, false, true);
-        gameObjects.push(laser);
-    }, 1500); // 1.5초마다 발사
-  }
-
-  takeDamage() {
-      this.life--;
-      if (this.life <= 0) {
-          this.dead = true;
-          clearInterval(this.moveInterval);
-          clearInterval(this.attackInterval);
+      if (this.dead) { clearInterval(this.moveInterval); return; }
+      if (this.x <= 20 || this.x + this.width >= canvas.width - 20) {
+        this.direction *= -1;
       }
-  }
+      this.x += 8 * this.direction;
+    }, 50);
 
-  // 보스 체력바 그리기
+    // 공격 타이머 (이게 재시작 시 멈추지 않아서 문제가 되었음)
+    this.attackInterval = setInterval(() => {
+      if (this.dead) { clearInterval(this.attackInterval); return; }
+      gameObjects.push(new Laser(this.x + this.width / 2, this.y + this.height, false, true, 0));
+      gameObjects.push(new Laser(this.x + this.width / 2, this.y + this.height, false, true, -3));
+      gameObjects.push(new Laser(this.x + this.width / 2, this.y + this.height, false, true, 3));
+    }, 1500);
+  }
+  takeDamage() {
+    this.life--;
+    if (this.life <= 0) {
+      this.dead = true;
+      this.cleanup(); // [수정] 죽을 때 확실하게 타이머 정리
+    }
+  }
   draw(ctx) {
-      super.draw(ctx);
-      // 체력바 배경
-      ctx.fillStyle = "red";
-      ctx.fillRect(this.x, this.y - 20, this.width, 10);
-      // 현재 체력
-      ctx.fillStyle = "green";
-      ctx.fillRect(this.x, this.y - 20, this.width * (this.life / this.maxLife), 10);
+    super.draw(ctx);
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; 
+    ctx.fillRect(this.x, this.y - 20, this.width, 10);
+    ctx.fillStyle = "rgb(0, 255, 0)";
+    ctx.fillRect(this.x, this.y - 20, this.width * (this.life / this.maxLife), 10);
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(this.x, this.y - 20, this.width, 10);
   }
 }
 
-// 레이저 (플레이어용 + 적/보스용 통합)
+// Laser
 class Laser extends GameObject {
-  constructor(x, y, isSuper, isEnemyLaser) {
+  constructor(x, y, isSuper, isEnemyLaser, xSpeed = 0) {
     super(x, y);
-    this.type = isEnemyLaser ? "EnemyLaser" : "Laser"; // 타입 구분
+    this.type = isEnemyLaser ? "EnemyLaser" : "Laser";
     this.img = laserImg;
     this.isSuper = isSuper;
-    this.isEnemyLaser = isEnemyLaser; 
+    this.isEnemyLaser = isEnemyLaser;
+    this.xSpeed = xSpeed;
 
     if (isSuper) {
-        this.width = 30; this.height = 60;
+      this.width = 30; this.height = 60;
     } else {
-        this.width = 9; this.height = 33;
+      this.width = 9; this.height = 33;
     }
 
-    let id = setInterval(() => {
-      // 적 레이저는 아래로, 영웅 레이저는 위로
+    this.intervalId = setInterval(() => {
+      if (this.dead) { clearInterval(this.intervalId); return; }
+      
+      this.x += this.xSpeed;
+      
       if (this.isEnemyLaser) {
-          this.y += 10; // 아래로 이동
-          if (this.y > canvas.height) {
-              this.dead = true;
-              clearInterval(id);
-          }
+        this.y += 10;
+        if (this.y > canvas.height) {
+           this.dead = true; clearInterval(this.intervalId);
+        }
       } else {
-          this.y -= 15; // 위로 이동
-          if (this.y < -this.height) {
-              this.dead = true;
-              clearInterval(id);
-          }
+        this.y -= 15;
+        if (this.y < -this.height) {
+           this.dead = true; clearInterval(this.intervalId);
+        }
       }
-    }, 100);
+    }, 50);
   }
 }
 
-// 폭발 이펙트
 class Explosion extends GameObject {
   constructor(x, y) {
     super(x, y);
@@ -286,104 +298,108 @@ function intersectRect(r1, r2) {
   return !(r2.left > r1.right || r2.right < r1.left || r2.top > r1.bottom || r2.bottom < r1.top);
 }
 
-// 게임 초기화
-function initGame() {
+function initStars() {
+  stars = [];
+  for(let i=0; i<50; i++) {
+    stars.push(new Star());
+  }
+}
+
+// [핵심 수정] 모든 게임 오브젝트의 타이머를 끄고 배열을 비우는 함수
+function clearAllGameObjects() {
+  gameObjects.forEach((go) => {
+    go.cleanup(); // 각 객체의 타이머(move, attack, intervalId) 모두 정지
+  });
   gameObjects = [];
-  createHero();
+}
+
+function initGame() {
+  clearAllGameObjects(); // [수정] 단순히 []로 비우지 않고 타이머 정리 후 비움
   
-  currentStage = 1; // 스테이지 1부터 시작
+  currentStage = 1;
+  isStageTransitioning = false;
+  createHero();
+  initStars();
   loadStage(currentStage);
 
-  // 키보드 이동
-  eventEmitter.on(Messages.KEY_EVENT_UP, () => { hero.y -= 5; });
-  eventEmitter.on(Messages.KEY_EVENT_DOWN, () => { hero.y += 5; });
-  eventEmitter.on(Messages.KEY_EVENT_LEFT, () => { hero.x -= 5; });
-  eventEmitter.on(Messages.KEY_EVENT_RIGHT, () => { hero.x += 5; });
-
-  // 차지 공격
+  eventEmitter.clear(); 
+  eventEmitter.on(Messages.KEY_EVENT_UP, () => { hero.y -= 10; }); 
+  eventEmitter.on(Messages.KEY_EVENT_DOWN, () => { hero.y += 10; });
+  eventEmitter.on(Messages.KEY_EVENT_LEFT, () => { hero.x -= 10; });
+  eventEmitter.on(Messages.KEY_EVENT_RIGHT, () => { hero.x += 10; });
   eventEmitter.on(Messages.KEY_EVENT_SPACE_DOWN, () => { if (hero) hero.startCharge(); });
   eventEmitter.on(Messages.KEY_EVENT_SPACE_UP, () => { if (hero) hero.stopChargeAndFire(); });
 
-  // [충돌 1] 플레이어 레이저 -> 적(Enemy) 또는 보스(Boss)
   eventEmitter.on(Messages.COLLISION_ENEMY_LASER, (_, { laser, target }) => {
-    // 일반 레이저면 소멸, 슈퍼 레이저는 관통(소멸 안함)
-    if (!laser.isSuper) {
-        laser.dead = true;
-    }
-
-    if (target.type === "Boss") {
-        target.takeDamage(); // 보스는 HP 감소
-        if (target.dead) hero.incrementPoints(1000); // 보스 처치 점수
-    } else {
-        target.dead = true; // 일반 적은 즉사
-        hero.incrementPoints(100);
-    }
+    if (!laser.isSuper) laser.dead = true;
     
-    // 폭발 이펙트
+    if (target.type === "Boss") {
+      target.takeDamage();
+      if (target.dead) hero.incrementPoints(1000);
+    } else {
+      target.dead = true;
+      hero.incrementPoints(100);
+    }
     gameObjects.push(new Explosion(target.x, target.y));
 
-    // 스테이지 클리어 체크
-    if (isStageClear()) {
-        if (currentStage < TOTAL_STAGES) {
-            nextStage();
-        } else {
-            eventEmitter.emit(Messages.GAME_END_WIN);
-        }
-    }
-  });
-
-  // [충돌 2] 적 본체 -> 플레이어 충돌
-  eventEmitter.on(Messages.COLLISION_ENEMY_HERO, (_, { enemy }) => {
-    // 보스랑 부딪히면 보스는 안 죽고 플레이어만 아픔
-    if(enemy.type !== "Boss") enemy.dead = true; 
-    
-    hero.decrementLife();
-    if (isHeroDead()) {
-      eventEmitter.emit(Messages.GAME_END_LOSS);
-    }
-  });
-
-  // [충돌 3] 적 레이저 -> 플레이어 충돌 (신규)
-  eventEmitter.on(Messages.COLLISION_HERO_ENEMY_LASER, (_, { laser }) => {
-      laser.dead = true;
-      hero.decrementLife();
-      if (isHeroDead()) {
-          eventEmitter.emit(Messages.GAME_END_LOSS);
+    if (isStageClear() && !isStageTransitioning) {
+      if (currentStage < TOTAL_STAGES) {
+        nextStage();
+      } else {
+        eventEmitter.emit(Messages.GAME_END_WIN);
       }
+    }
   });
 
-  eventEmitter.on(Messages.GAME_END_WIN, () => { endGame(true); });
-  eventEmitter.on(Messages.GAME_END_LOSS, () => { endGame(false); });
-  eventEmitter.on(Messages.KEY_EVENT_ENTER, () => { resetGame(); });
+  eventEmitter.on(Messages.COLLISION_ENEMY_HERO, (_, { enemy }) => {
+    if(enemy.type !== "Boss") enemy.dead = true;
+    hero.decrementLife();
+    gameObjects.push(new Explosion(hero.x, hero.y)); 
+    if (isHeroDead()) eventEmitter.emit(Messages.GAME_END_LOSS);
+  });
+
+  eventEmitter.on(Messages.COLLISION_HERO_ENEMY_LASER, (_, { laser }) => {
+    laser.dead = true;
+    hero.decrementLife();
+    gameObjects.push(new Explosion(hero.x, hero.y));
+    if (isHeroDead()) eventEmitter.emit(Messages.GAME_END_LOSS);
+  });
+
+  eventEmitter.on(Messages.GAME_END_WIN, () => endGame(true));
+  eventEmitter.on(Messages.GAME_END_LOSS, () => endGame(false));
+  eventEmitter.on(Messages.KEY_EVENT_ENTER, () => resetGame());
 }
 
-// 스테이지 로드 함수
 function loadStage(stage) {
-    if (stage === 1) {
-        createEnemies(); // 쫄병 생성
-    } else if (stage === 2) {
-        createBoss(); // 보스 생성
-    }
+  if (stage === 1) createEnemies();
+  else if (stage === 2) createBoss();
 }
 
 function nextStage() {
+  isStageTransitioning = true;
+  setTimeout(() => {
     currentStage++;
-    // 화면의 모든 적/레이저 제거 (안전하게)
-    gameObjects = gameObjects.filter(go => go.type === "Hero");
     
-    setTimeout(() => {
-        loadStage(currentStage);
-    }, 1000); // 1초 뒤 다음 스테이지 시작
+    // [수정] 스테이지 전환 시, Hero를 제외한 모든 객체의 타이머 정리
+    gameObjects.forEach(go => {
+        if (go.type !== "Hero") {
+            go.cleanup(); // 타이머 정지
+            go.dead = true; // 삭제 표시
+        }
+    });
+
+    gameObjects = gameObjects.filter(go => go.type === "Hero");
+    hero.life = 3; 
+    loadStage(currentStage);
+    isStageTransitioning = false;
+  }, 2000);
 }
 
 function createEnemies() {
   const MONSTER_TOTAL = 5;
-  const MONSTER_WIDTH = MONSTER_TOTAL * 98;
-  const START_X = (canvas.width - MONSTER_WIDTH) / 2;
-  const STOP_X = START_X + MONSTER_WIDTH;
-
-  for (let x = START_X; x < STOP_X; x += 98) {
-    for (let y = 0; y < 50 * 5; y += 50) {
+  const START_X = (canvas.width - (MONSTER_TOTAL * 98)) / 2;
+  for (let x = START_X; x < START_X + (MONSTER_TOTAL * 98); x += 98) {
+    for (let y = 0; y < 50 * 3; y += 50) { 
       const enemy = new Enemy(x, y);
       gameObjects.push(enemy);
     }
@@ -391,28 +407,25 @@ function createEnemies() {
 }
 
 function createBoss() {
-    // 화면 중앙 상단에 보스 생성
-    const boss = new Boss(canvas.width / 2 - 100, 50);
-    gameObjects.push(boss);
+  const boss = new Boss(canvas.width / 2 - 100, 50);
+  gameObjects.push(boss);
 }
 
 function createHero() {
-  hero = new Hero(canvas.width / 2 - 45, canvas.height - canvas.height / 4);
+  hero = new Hero(canvas.width / 2 - 45, canvas.height - 100);
   hero.img = heroImg;
   gameObjects.push(hero);
 }
 
-function drawGameObjects(ctx) {
-  gameObjects.forEach((go) => go.draw(ctx));
-}
-
 function updateGameObjects() {
-  // 타겟(적, 보스) 필터링
-  const targets = gameObjects.filter((go) => go.type === "Enemy" || go.type === "Boss");
-  const heroLasers = gameObjects.filter((go) => go.type === "Laser");
-  const enemyLasers = gameObjects.filter((go) => go.type === "EnemyLaser");
+  if(isStageTransitioning) return;
 
-  // 1. 영웅 레이저 vs 적(타겟)
+  stars.forEach(star => star.update());
+
+  const targets = gameObjects.filter(go => go.type === "Enemy" || go.type === "Boss");
+  const heroLasers = gameObjects.filter(go => go.type === "Laser");
+  const enemyLasers = gameObjects.filter(go => go.type === "EnemyLaser");
+
   heroLasers.forEach((l) => {
     targets.forEach((t) => {
       if (intersectRect(l.rectFromGameObject(), t.rectFromGameObject())) {
@@ -421,36 +434,43 @@ function updateGameObjects() {
     });
   });
 
-  // 2. 적 본체 vs 영웅
   targets.forEach((t) => {
     if (intersectRect(hero.rectFromGameObject(), t.rectFromGameObject())) {
       eventEmitter.emit(Messages.COLLISION_ENEMY_HERO, { enemy: t });
     }
   });
 
-  // 3. 적 레이저 vs 영웅
   enemyLasers.forEach((l) => {
-      if (intersectRect(l.rectFromGameObject(), hero.rectFromGameObject())) {
-          eventEmitter.emit(Messages.COLLISION_HERO_ENEMY_LASER, { laser: l });
-      }
+    if (intersectRect(l.rectFromGameObject(), hero.rectFromGameObject())) {
+      eventEmitter.emit(Messages.COLLISION_HERO_ENEMY_LASER, { laser: l });
+    }
   });
 
-  gameObjects = gameObjects.filter((go) => !go.dead);
+  // [중요] 죽은 객체들은 화면 그리기 목록에서 제외 (이미 cleanup은 위에서 처리됨)
+  gameObjects = gameObjects.filter(go => !go.dead);
 }
 
-function drawLife() {
+function drawGameObjects(ctx) {
+  stars.forEach(star => star.draw(ctx));
+  gameObjects.forEach(go => go.draw(ctx));
+}
+
+function drawUI() {
   const START_POS = canvas.width - 180;
   for (let i = 0; i < hero.life; i++) {
     ctx.drawImage(lifeImg, START_POS + (45 * (i + 1)), canvas.height - 37);
   }
-}
-
-function drawPoints() {
-  ctx.font = "30px Arial";
-  ctx.fillStyle = "red";
+  ctx.font = "bold 25px Arial";
+  ctx.fillStyle = "white";
   ctx.textAlign = "left";
-  // 스테이지 정보도 같이 표시
-  ctx.fillText(`Stage: ${currentStage} | Points: ${hero.points}`, 10, canvas.height - 20);
+  ctx.fillText(`STAGE ${currentStage}   POINTS: ${hero.points}`, 20, 40);
+
+  if(isStageTransitioning) {
+      ctx.font = "bold 50px Arial";
+      ctx.fillStyle = "yellow";
+      ctx.textAlign = "center";
+      ctx.fillText(`STAGE ${currentStage + 1} START!`, canvas.width/2, canvas.height/2);
+  }
 }
 
 function displayMessage(message, color = "red") {
@@ -461,10 +481,8 @@ function displayMessage(message, color = "red") {
 }
 
 function isHeroDead() { return hero.life <= 0; }
-
 function isStageClear() {
-  // 적이나 보스가 하나도 없으면 클리어
-  const enemies = gameObjects.filter((go) => (go.type === "Enemy" || go.type === "Boss") && !go.dead);
+  const enemies = gameObjects.filter(go => (go.type === "Enemy" || go.type === "Boss") && !go.dead);
   return enemies.length === 0;
 }
 
@@ -485,21 +503,24 @@ function endGame(win) {
 function resetGame() {
   if (gameLoopId) {
     clearInterval(gameLoopId);
+    
+    // [중요] 재시작 시 화면에 보이지 않는 이전 게임 객체들(보스 포함)의 타이머를 모두 정지!
+    clearAllGameObjects(); 
+
     eventEmitter.clear();
     initGame();
     gameLoopId = setInterval(() => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "black";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      drawPoints();
-      drawLife();
+      
       updateGameObjects();
       drawGameObjects(ctx);
-    }, 100);
+      drawUI(); 
+    }, 50); 
   }
 }
 
-// 키 입력 리스너
 let spacePressed = false;
 window.addEventListener("keydown", (evt) => {
   if (evt.key === "ArrowUp") eventEmitter.emit(Messages.KEY_EVENT_UP);
@@ -511,25 +532,22 @@ window.addEventListener("keydown", (evt) => {
   }
   else if (evt.key === "Enter") eventEmitter.emit(Messages.KEY_EVENT_ENTER);
 });
-
 window.addEventListener("keyup", (evt) => {
   if (evt.keyCode === 32) {
     spacePressed = false; eventEmitter.emit(Messages.KEY_EVENT_SPACE_UP);
   }
 });
 
-// 메인 실행
 window.onload = async () => {
   canvas = document.getElementById("myCanvas");
   ctx = canvas.getContext("2d");
 
-  // 이미지 로드 (assets 폴더에 ufo.png가 있어야 합니다)
   heroImg = await loadTexture("assets/player.png");
   enemyImg = await loadTexture("assets/enemyShip.png");
   laserImg = await loadTexture("assets/laserRed.png");
   laserShotImg = await loadTexture("assets/laserRedShot.png");
   lifeImg = await loadTexture("assets/life.png");
-  ufoImg = await loadTexture("assets/enemyUFO.png"); // 보스 이미지 로드
+  ufoImg = await loadTexture("assets/enemyUFO.png"); 
 
   initGame();
 
@@ -538,9 +556,8 @@ window.onload = async () => {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    drawGameObjects(ctx);
     updateGameObjects();
-    drawPoints();
-    drawLife();
-  }, 100);
+    drawGameObjects(ctx);
+    drawUI();
+  }, 50);
 };
